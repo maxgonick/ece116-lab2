@@ -45,7 +45,9 @@ private:
 public:
 	cache();
 	void controller(bool MemR, bool MemW, int* data, int adr, int* myMem);
-	// add more functions here ...	
+	// add more functions here ...
+	void store(int* data, int adr, int* myMem);	
+	int load(int *data, int adr, int* myMem);
 };
 
 
