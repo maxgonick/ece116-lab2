@@ -28,6 +28,7 @@ struct cacheBlock
 	int data;		  // the actual data stored in the cache/memory
 	bool valid;
 	// add more things here if needed
+	int adr;
 };
 
 struct Stat
@@ -67,4 +68,7 @@ public:
 	cacheBlock L1Replace(addressInfo info, cacheBlock newBlock);
 	cacheBlock L2Replace(addressInfo info, cacheBlock newBlock);
 	int victimFindLRU();
+	void L1display();
+	void L2display();
+	void VICdisplay();
 };
