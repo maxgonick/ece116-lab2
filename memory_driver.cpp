@@ -52,7 +52,6 @@ int main(int argc, char *argv[]) // the program runs like this: ./program <filen
 		myTrace[TraceSize].MemW = stoi(s2);
 		myTrace[TraceSize].adr = stoi(s3);
 		myTrace[TraceSize].data = stoi(s4);
-		// cout<<myTrace[TraceSize].MemW << endl;
 		TraceSize += 1;
 	}
 
@@ -79,16 +78,12 @@ int main(int argc, char *argv[]) // the program runs like this: ./program <filen
 	}
 
 	double L1_miss_rate, L2_miss_rate, VIC_miss_rate, AAT;
-	// compute the stats here:
-	cout << "miss L1: " << myCache.returnStat().missL1 << endl;
-	cout << "acc L1: " << myCache.returnStat().accL1 << endl;
 
 	L1_miss_rate = static_cast<double>(myCache.returnStat().missL1) / myCache.returnStat().accL1;
 	L2_miss_rate = static_cast<double>(myCache.returnStat().missL2) / myCache.returnStat().accL2;
 	VIC_miss_rate = static_cast<double>(myCache.returnStat().missVic) / myCache.returnStat().accVic;
 	AAT = 1.0 + L1_miss_rate * (1.0 + VIC_miss_rate * (8.0 + 100.0 * L2_miss_rate));
 	cout << "(" << setprecision(10) << L1_miss_rate << "," << setprecision(10) << L2_miss_rate << "," << setprecision(10) << AAT << ")" << endl;
-
 	// closing the file
 	fin.close();
 

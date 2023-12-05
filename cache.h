@@ -68,7 +68,4 @@ public:
 	cacheBlock L1Replace(addressInfo info, cacheBlock newBlock);
 	cacheBlock L2Replace(addressInfo info, cacheBlock newBlock);
 	int victimFindLRU();
-	void L1display();
-	void L2display();
-	void VICdisplay();
 };

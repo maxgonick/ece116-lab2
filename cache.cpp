@@ -8,29 +8,23 @@ cache::cache()
 		for (int j = 0; j < L2_CACHE_WAYS; j++)
 			L2[i][j].valid = false;
 
-	// Do the same for Victim Cache ...
-
 	this->myStat.missL1 = 0;
 	this->myStat.missL2 = 0;
 	this->myStat.accL1 = 0;
 	this->myStat.accL2 = 0;
-
-	// Add stat for Victim cache ...
 }
 void cache::controller(bool MemR, bool MemW, int *data, int adr, int *myMem)
 {
-	// add your code here
+
 	// Store Algorithm
 	if (MemR)
 	{
 		load(data, adr, myMem);
-		// cout << "END LOAD --------" << endl;
 	}
 	// Load
 	else
 	{
 		store(data, adr, myMem);
-		// cout << "END STORE --------" << endl;
 	}
 }
 
@@ -45,9 +39,6 @@ void cache::store(int *data, int adr, int *myMem)
 	storeBlock.tag = info.tag;
 	storeBlock.valid = 1;
 	storeBlock.lru_position = 0;
-
-	// cout << "START STORE" << endl;
-	// cout << "Storing Address " << adr << endl;
 
 	// Search L1
 
@@ -66,6 +57,7 @@ void cache::store(int *data, int adr, int *myMem)
 	// Victim Hit
 	if (vicIndex != -1)
 	{
+		// Re-calculate LRU positions
 		int pivot = victimCache[vicIndex].lru_position;
 		for (int i = 0; i < VICTIM_SIZE; i++)
 		{
@@ -83,6 +75,7 @@ void cache::store(int *data, int adr, int *myMem)
 	int L2Index = L2search(info);
 	if (L2Index != -1)
 	{
+		// Re-calculate LRU positions
 		int pivot = L2[info.index][L2Index].lru_position;
 		for (int i = 0; i < L2_CACHE_WAYS; i++)
 		{
@@ -90,13 +83,12 @@ void cache::store(int *data, int adr, int *myMem)
 			{
 				L2[info.index][i].lru_position++;
 			}
-			/* code */
 		}
 		L2[info.index][L2Index] = storeBlock;
 		myMem[adr] = *data;
 		return;
 	}
-
+	// Always update main memory!
 	myMem[adr] = *data;
 	return;
 }
@@ -108,24 +100,18 @@ int cache::load(int *data, int adr, int *myMem)
 	const int indexSize = 4;
 
 	addressInfo info = extractAddressInfo(adr, offsetSize, indexSize);
-	// cout << "START LOAD ------------" << endl;
-	// cout << "Address " << adr << endl;
-	// cout << "Tag " << info.tag << endl;
-	// cout << "Index " << info.index << endl;
-	// cout << "Offset " << info.offset << endl;
 
 	// Check L1 Cache
-	// Index into correct spot in L1`
+	// Index into correct spot in L1
 	cacheBlock L1Block = L1[info.index];
 	myStat.accL1++;
+	// L1 Hit
 	if (L1search(info))
 	{
-		// cout << "L1 Hit" << endl;
 		return L1Block.data;
 	}
 	else
 	{
-		// cout << "L1 Miss" << endl;
 		myStat.missL1++;
 	}
 
@@ -135,7 +121,6 @@ int cache::load(int *data, int adr, int *myMem)
 	myStat.accVic++;
 	if (victimIndex != -1)
 	{
-		// cout << "Victim Hit" << endl;
 		//  Swap L1 and Victim Line
 		cacheBlock newL1Block;
 		newL1Block.adr = victimCache[victimIndex].adr;
@@ -147,9 +132,7 @@ int cache::load(int *data, int adr, int *myMem)
 		{
 			addressInfo adrtemp;
 			adrtemp = extractAddressInfo(evictedL1Block.adr, offsetSize, indexSize);
-			// cout << "Tag " << adrtemp.tag << " "
-			//	 << "Index " << adrtemp.index << endl;
-			//  Puts evictedL1Block into victim cache
+			//  Puts evictedL1Block into victim cache with L1/L2 tag formatting
 			evictedL1Block.tag = (evictedL1Block.tag << 4) | extractAddressInfo(newL1Block.adr, offsetSize, indexSize).index;
 			evictVictim(victimIndex, evictedL1Block);
 			return L1[info.index].data;
@@ -158,7 +141,6 @@ int cache::load(int *data, int adr, int *myMem)
 	// Victim Miss
 	else
 	{
-		// cout << "Victim Miss" << endl;
 		myStat.missVic++;
 	}
 
@@ -168,7 +150,6 @@ int cache::load(int *data, int adr, int *myMem)
 	// L2 Hit
 	if (l2index != -1)
 	{
-		// cout << "L2 Hit" << endl;
 		cacheBlock hitBlock = L2[info.index][l2index];
 		// Move block to L1
 		cacheBlock oldL1Block = L1Replace(info, hitBlock);
@@ -184,6 +165,7 @@ int cache::load(int *data, int adr, int *myMem)
 		int lru = victimFindLRU();
 
 		newVictimBlock.adr = oldL1Block.adr;
+		// Calculate Victim Tag
 		newVictimBlock.tag = (oldL1Block.tag << 4) | oldL1Info.index;
 		newVictimBlock.data = oldL1Block.data;
 		newVictimBlock.valid = 1;
@@ -199,11 +181,9 @@ int cache::load(int *data, int adr, int *myMem)
 	}
 	else
 	{
-		// cout << "L2 Miss" << endl;
 		myStat.missL2++;
 
-		// Search main memory
-		// cout << "Searching Main Mem" << endl;
+		// Search main memory and create cacheBlock from data
 		cacheBlock mainMemoryBlock = cacheBlock();
 		mainMemoryBlock.data = myMem[adr];
 		mainMemoryBlock.valid = true;
@@ -212,6 +192,7 @@ int cache::load(int *data, int adr, int *myMem)
 		// Move main memory block to L1
 		cacheBlock oldL1Block = L1Replace(info, mainMemoryBlock);
 		oldL1Block.lru_position = 0;
+		// See if we need to evict a valid L1 block to victim
 		if (!oldL1Block.valid)
 			return myMem[adr];
 
@@ -279,11 +260,7 @@ cacheBlock cache::L1update(int *data, addressInfo info)
 
 bool cache::L1search(addressInfo info)
 {
-	// cout << "L1" << endl;
-	// for (int i = 0; i < L1_CACHE_SETS; i++)
-	// {
-	// 	cout << L1[i].valid << " " << L1[i].adr << endl;
-	// }
+
 	cacheBlock L1Block = L1[info.index];
 	if (L1Block.valid && L1Block.tag == info.tag)
 	{
@@ -294,12 +271,10 @@ bool cache::L1search(addressInfo info)
 
 int cache::victimSearch(addressInfo info)
 {
-	// cout << "VICTIM" << endl;
 	addressInfo vicInfo = info;
 	vicInfo.tag = (info.tag << 4) | info.index;
 	for (int i = 0; i < VICTIM_SIZE; i++)
 	{
-		// cout << victimCache[i].valid << " " << victimCache[i].adr << " " << victimCache[i].tag << " " << vicInfo.tag << endl;
 		if (victimCache[i].valid && victimCache[i].tag == vicInfo.tag)
 		{
 			return i;
@@ -310,10 +285,8 @@ int cache::victimSearch(addressInfo info)
 
 int cache::L2search(addressInfo info)
 {
-	// cout << "L2" << endl;
 	for (int i = 0; i < L2_CACHE_WAYS; i++)
 	{
-		// cout << "address " << L2[info.index][i].adr << "valid " << L2[info.index][i].valid << " tag " << L2[info.index][i].tag << endl;
 		if (L2[info.index][i].valid && L2[info.index][i].tag == info.tag)
 		{
 			return i;
@@ -352,7 +325,6 @@ cacheBlock cache::L1Replace(addressInfo info, cacheBlock newBlock)
 
 cacheBlock cache::L2Replace(addressInfo info, cacheBlock newBlock)
 {
-	// cout << "putting something in l2 " << endl;
 	int max = -1;
 	for (int i = 0; i < L2_CACHE_WAYS; i++)
 	{
@@ -363,21 +335,17 @@ cacheBlock cache::L2Replace(addressInfo info, cacheBlock newBlock)
 		if (!L2[info.index][i].valid)
 		{
 			max = -1;
-			// cout << "INVALID~!" << endl;
 			break;
 		}
 	}
-
-	// cout << "max index is " << max << endl;
+	// Puts new block into victim cache and re-calculates LRU positions
 	for (int i = 0; i < L2_CACHE_WAYS; i++)
 	{
 		if ((L2[info.index][i].lru_position >= max && max != -1) || (max == -1 && !L2[info.index][i].valid))
 		{
-			// cout << "VALID??? " << L2[info.index][i].valid << endl;
 			cacheBlock oldBlock = L2[info.index][i];
 			newBlock.valid = 1;
 			L2[info.index][i] = newBlock;
-			// cout << "Putting block in l2 at position " << i << endl;
 			L2[info.index][i].lru_position = 0;
 			for (int j = 0; j < L2_CACHE_WAYS; j++)
 			{
@@ -411,29 +379,4 @@ int cache::victimFindLRU()
 		}
 	}
 	return maxIndex;
-}
-
-void cache::L1display()
-{
-	for (int i = 0; i < L1_CACHE_SETS; i++)
-	{
-		/* code */
-		cout << "Valid: " << L1[i].valid << " Address: " << L1[i].adr << " Tag: " << L1[i].tag << endl;
-	}
-}
-
-void cache::L2display()
-{
-	for (int i = 0; i < L2_CACHE_SETS; i++)
-	{
-		cout << "Valid: " << L2[i][0].valid << " Address: " << L2[i][0].adr << " Tag: " << L2[i][0].tag << endl;
-	}
-}
-
-void cache::VICdisplay()
-{
-	for (int i = 0; i < VICTIM_SIZE; i++)
-	{
-		cout << "Valid: " << victimCache[i].valid << " Address: " << victimCache[i].adr << " Tag: " << victimCache[i].tag << " LRU: " << victimCache[i].lru_position << endl;
-	}
 }
