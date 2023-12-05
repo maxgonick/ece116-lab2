@@ -21,24 +21,84 @@ void cache::controller(bool MemR, bool MemW, int *data, int adr, int *myMem)
 {
 	// add your code here
 	// Store Algorithm
-	if (MemW)
+	if (MemR)
 	{
 		load(data, adr, myMem);
+		cout << "END LOAD --------" << endl;
 	}
 	// Load
 	else
 	{
 		store(data, adr, myMem);
+		cout << "END STORE --------" << endl;
 	}
 }
 
 void cache::store(int *data, int adr, int *myMem)
 {
-	// Store in L1
 	// 32-bit address extract tag, index, offset
 	const int offsetSize = 2;
 	const int indexSize = 4;
 	addressInfo info = extractAddressInfo(adr, offsetSize, indexSize);
+	cacheBlock storeBlock;
+	storeBlock.data = *data;
+	storeBlock.tag = info.tag;
+	storeBlock.valid = 1;
+	storeBlock.lru_position = 0;
+
+	cout << "START STORE" << endl;
+	cout << "Storing Address " << adr << endl;
+
+	// Search L1
+
+	// L1 Hit
+	if (L1search(info))
+	{
+		// Update Data in L1
+		L1[info.index] = storeBlock;
+		// Update Data in Main Memory
+		myMem[adr] = *data;
+		return;
+	}
+
+	// Search Victim
+	int vicIndex = victimSearch(info);
+	// Victim Hit
+	if (vicIndex != -1)
+	{
+		int pivot = victimCache[vicIndex].lru_position;
+		for (int i = 0; i < VICTIM_SIZE; i++)
+		{
+			if (victimCache[i].valid && victimCache[i].lru_position < pivot)
+			{
+				victimCache[i].lru_position++;
+			}
+		}
+		victimCache[vicIndex] = storeBlock;
+		myMem[adr] = *data;
+		return;
+	}
+
+	// Search L2
+	int L2Index = L2search(info);
+	if (L2Index != -1)
+	{
+		int pivot = L2[info.index][L2Index].lru_position;
+		for (int i = 0; i < L2_CACHE_WAYS; i++)
+		{
+			if (L2[info.index][i].valid && L2[info.index][i].lru_position < pivot)
+			{
+				L2[info.index][i].lru_position++;
+			}
+			/* code */
+		}
+		L2[info.index][L2Index] = storeBlock;
+		myMem[adr] = *data;
+		return;
+	}
+
+	myMem[adr] = *data;
+	return;
 }
 
 int cache::load(int *data, int adr, int *myMem)
@@ -48,9 +108,12 @@ int cache::load(int *data, int adr, int *myMem)
 	const int indexSize = 4;
 
 	addressInfo info = extractAddressInfo(adr, offsetSize, indexSize);
+	cout << "START LOAD ------------" << endl;
+	cout << "Address " << adr << endl;
 	cout << "Tag " << info.tag << endl;
 	cout << "Index " << info.index << endl;
 	cout << "Offset " << info.offset << endl;
+
 	// Check L1 Cache
 	// Index into correct spot in L1`
 	cacheBlock L1Block = L1[info.index];
@@ -121,11 +184,11 @@ int cache::load(int *data, int adr, int *myMem)
 		myStat.missL2++;
 
 		// Search main memory
+		cout << "Searching Main Mem" << endl;
 		cacheBlock mainMemoryBlock = cacheBlock();
 		mainMemoryBlock.data = myMem[adr];
-		addressInfo mainMemoryInfo = extractAddressInfo(mainMemoryBlock.data, offsetSize, indexSize);
 		mainMemoryBlock.valid = true;
-		mainMemoryBlock.tag = mainMemoryInfo.tag;
+		mainMemoryBlock.tag = info.tag;
 		// Move main memory block to L1
 		cacheBlock oldL1Block = L1Replace(info, mainMemoryBlock);
 		oldL1Block.lru_position = 0;
@@ -238,6 +301,8 @@ cacheBlock cache::L1Replace(addressInfo info, cacheBlock newBlock)
 {
 	cacheBlock oldBlock = L1[info.index];
 	L1[info.index] = newBlock;
+	cout << info.index << " " << L1[info.index].tag << endl;
+	;
 	return oldBlock;
 }
 

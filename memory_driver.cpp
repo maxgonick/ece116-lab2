@@ -78,14 +78,15 @@ int main(int argc, char *argv[]) // the program runs like this: ./program <filen
 		myCache.controller(cur_MemR, cur_MemW, &cur_data, cur_adr, myMem); // in your memory controller you need to implement your FSM, LW, SW, and MM.
 	}
 
-	double L1_miss_rate, L2_miss_rate, AAT;
+	double L1_miss_rate, L2_miss_rate, VIC_miss_rate, AAT;
 	// compute the stats here:
 	cout << "miss L1: " << myCache.returnStat().missL1 << endl;
 	cout << "acc L1: " << myCache.returnStat().accL1 << endl;
 
 	L1_miss_rate = static_cast<double>(myCache.returnStat().missL1) / myCache.returnStat().accL1;
 	L2_miss_rate = static_cast<double>(myCache.returnStat().missL2) / myCache.returnStat().accL2;
-	AAT = 1.0 + L1_miss_rate * ();
+	VIC_miss_rate = static_cast<double>(myCache.returnStat().missVic) / myCache.returnStat().accVic;
+	AAT = 1.0 + L1_miss_rate * (1.0 + VIC_miss_rate * (8.0 + 100.0 * L2_miss_rate));
 	cout << "(" << setprecision(10) << L1_miss_rate << "," << setprecision(10) << L2_miss_rate << "," << setprecision(10) << AAT << ")" << endl;
 
 	// closing the file
